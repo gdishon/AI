@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>מערכת משוב לפרויקטים ב-HTML</title>
+    <style>
+        /* Modern, minimalist academic styling tailored for RTL Hebrew text */
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+            max-width: 700px;
+            margin: 40px auto;
+            padding: 0 20px;
+            color: #222;
+            line-height: 1.6;
+            text-align: right;
+        }
+        h1 {
+            font-size: 1.8rem;
+            font-weight: 700;
+            margin-bottom: 8px;
+            color: #111;
+        }
+        p.subtitle {
+            color: #666;
+            margin-bottom: 30px;
+        }
+        .upload-container {
+            border: 2px dashed #ccc;
+            border-radius: 8px;
+            padding: 40px 20px;
+            text-align: center;
+            background-color: #fafafa;
+            cursor: pointer;
+            transition: border-color 0.2s, background-color 0.2s;
+            margin-bottom: 20px;
+        }
+        .upload-container:hover {
+            border-color: #000;
+            background-color: #f0f0f0;
+        }
+        #fileInput {
+            display: none;
+        }
+        .upload-icon {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            display: block;
+        }
+        #fileStatus {
+            font-weight: 600;
+            margin-top: 10px;
+            color: #0066cc;
+        }
+        button {
+            background-color: #000;
+            color: #fff;
+            border: none;
+            padding: 12px 24px;
+            font-size: 1rem;
+            border-radius: 6px;
+            cursor: pointer;
+            width: 100%;
+            font-weight: 600;
+            transition: opacity 0.2s;
+        }
+        button:hover {
+            opacity: 0.8;
+        }
+        button:disabled {
+            background-color: #aaa;
+            cursor: not-allowed;
+        }
+        #output {
+            margin-top: 30px;
+            padding: 24px;
+            background-color: #fff;
+            border: 1px solid #e0e0e0;
+            border-right: 5px solid #000;
+            border-radius: 6px;
+            min-height: 100px;
+            white-space: pre-wrap; /* Preserves line breaks from the AI */
+            box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+        }
+        .loading {
+            color: #666;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>מערכת בדיקת קוד אוטומטית</h1>
+    <p class="subtitle">העלו את קובץ ה-HTML שלכם כדי לקבל משוב פדגוגי מפורט בעברית.</p>
+    
+    <!-- File Upload Interface Component -->
+    <div class="upload-container" onclick="document.getElementById('fileInput').click()">
+        <span class="upload-icon">📁</span>
+        <span>לחצו כאן לבחירת קובץ ה-HTML של הפרויקט</span>
+        <input type="file" id="fileInput" accept=".html" onchange="handleFileSelect(event)">
+        <div id="fileStatus"></div>
+    </div>
+
+    <button id="submitBtn" onclick="sendCodeToAI()" disabled>קבלת משוב מהרכיב החכם</button>
+
+    <!-- Feedback Section -->
+    <div id="output">המשוב שלכם יופיע כאן לאחר העלאת הקובץ...</div>
+
+    <script>
+        // 1. PASTE YOUR SECURE NETLIFY FUNCTION URL HERE
+        const NETLIFY_FUNCTION_URL = "https://your-site.netlify.app/.netlify/functions/api";
+        
+        let uploadedCodeText = ""; 
+
+        // Reads the file when selected by the student
+        function handleFileSelect(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                uploadedCodeText = e.target.result; // Saves the raw HTML content
+                document.getElementById('fileStatus').innerText = `קובץ נטען בהצלחה: ${file.name}`;
+                document.getElementById('submitBtn').disabled = false; // Activate button
+            };
+            reader.readAsText(file);
+        }
+
+        async function sendCodeToAI() {
+            const outputBox = document.getElementById("output");
+            const submitBtn = document.getElementById("submitBtn");
+
+            if (!uploadedCodeText) return;
+
+            submitBtn.disabled = true;
+            outputBox.innerHTML = '<span class="loading">הקוד מנותח כעת על ידי הבינה המלאכותית, אנא המתינו...</span>';
+
+            // 2. We build the exact evaluation prompt instructions directly in Hebrew
+            const customPrompt = `
+אנא פעל כמורה מומחה למדעי המחשב ופיתוח אתרים. 
+נתח את קוד ה-HTML הבא שהוגש על ידי סטודנט כפרויקט. 
+
+ספק משוב מפורט, בונה, מעודד ומקצועי לחלוטין בשפה העברית.
+המשוב צריך לכלול:
+1. נקודות חוזקה (מה נעשה היטב בקוד).
+2. נקודות לשיפור (טעויות סינטקס, תגיות שלא נסגרו, סדר נכון או שימוש לא נכון באלמנטים).
+3. הצעות קונקרטיות לשדרוג הפרויקט.
+
+הנה קוד הסטודנט לבדיקה:
+---
+${uploadedCodeText}
+---
+            `;
+
+            try {
+                const response = await fetch(NETLIFY_FUNCTION_URL, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ prompt: customPrompt })
+                });
+
+                const data = await response.json();
+
+                if (data.error) {
+                    outputBox.innerText = "שגיאה מהשרת: " + data.error;
+                } else {
+                    outputBox.innerText = data.reply; // Outputs Hebrew response smoothly
+                }
+
+            } catch (err) {
+                console.error(err);
+                outputBox.innerText = "נכשל החיבור לשרת. ודא כי כתובת ה-Netlify שלך מעודכנת ומדויקת בקוד.";
+            } finally {
+                submitBtn.disabled = false;
+            }
+        }
+    </script>
+
+</body>
+</html>
